@@ -370,3 +370,43 @@ export async function resetUserPin(username: string, pinHash: string): Promise<b
   `) as { id: number }[];
   return rows.length > 0;
 }
+
+// ---------------------------------------------------------------------------
+// Liquidity deposits (admin wallet top-ups)
+// ---------------------------------------------------------------------------
+
+export type LiquidityDeposit = {
+  id: number;
+  amount_tzs: number;
+  phone: string;
+  ntzs_ref: string | null;
+  status: string;
+  created_at: string;
+};
+
+export async function createLiquidityDeposit(
+  adminId: number,
+  amountTzs: number,
+  phone: string,
+  ntzsRef: string,
+  status: string
+): Promise<void> {
+  await sql`
+    insert into liquidity_deposits (admin_id, amount_tzs, phone, ntzs_ref, status)
+    values (${adminId}, ${amountTzs}, ${phone}, ${ntzsRef}, ${status})
+  `;
+}
+
+export async function listLiquidityDeposits(limit = 20): Promise<LiquidityDeposit[]> {
+  return (await sql`
+    select id, amount_tzs, phone, ntzs_ref, status, created_at
+    from liquidity_deposits order by created_at desc limit ${limit}
+  `) as LiquidityDeposit[];
+}
+
+export async function totalLiquidity(): Promise<number> {
+  const r = (await sql`select coalesce(sum(amount_tzs), 0)::int as n from liquidity_deposits`) as {
+    n: number;
+  }[];
+  return r[0]?.n ?? 0;
+}

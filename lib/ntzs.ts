@@ -15,7 +15,7 @@
 // Inert until NTZS_API_BASE + NTZS_API_KEY + NTZS_USER_ID are set, so the
 // manual payout path is unaffected. Sandbox-test a small amount first.
 
-const BASE = process.env.NTZS_API_BASE; // e.g. https://www.ntzs.co.tz
+const BASE = process.env.NTZS_API_BASE || "https://www.ntzs.co.tz";
 const KEY = process.env.NTZS_API_KEY; // partner API key (Bearer)
 const USER_ID = process.env.NTZS_USER_ID; // source nTZS account id to burn from
 
@@ -73,4 +73,42 @@ export function isSettled(status: string): boolean {
 }
 export function isFailed(status: string): boolean {
   return /failed|reject|cancel|reversed|declin/i.test(status);
+}
+
+// --- Deposits: fund treasury liquidity via mobile money ----------------------
+// Only NTZS_API_KEY is required (base URL defaults above).
+export type DepositInput = { amountTzs: number; phoneNumber: string };
+export type DepositResult =
+  | { ok: true; id: string; status: string; instructions: string; raw: unknown }
+  | { ok: false; error: string; status?: number; raw?: unknown };
+
+export function ntzsDepositConfigured(): boolean {
+  return Boolean(KEY);
+}
+
+/**
+ * Top up the partner treasury via an M-Pesa STK push. Matched to
+ * apps/web/.../api/v1/partners/fund-treasury (body { amountTzs, phoneNumber }).
+ * If your live deposit endpoint differs, this is the one spot to adjust.
+ */
+export async function fundTreasury(input: DepositInput): Promise<DepositResult> {
+  if (!KEY) return { ok: false, error: "not_configured" };
+  try {
+    const res = await fetch(`${BASE}/api/v1/partners/fund-treasury`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+      body: JSON.stringify({ amountTzs: Math.trunc(input.amountTzs), phoneNumber: input.phoneNumber }),
+    });
+    const raw = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) return { ok: false, error: String(raw.error ?? "provider_error"), status: res.status, raw };
+    return {
+      ok: true,
+      id: String(raw.id ?? ""),
+      status: String(raw.status ?? "submitted"),
+      instructions: String(raw.instructions ?? "Check your phone for the M-Pesa payment prompt."),
+      raw,
+    };
+  } catch (e) {
+    return { ok: false, error: "network_error", raw: String(e) };
+  }
 }

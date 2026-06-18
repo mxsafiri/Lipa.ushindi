@@ -55,3 +55,16 @@ create table if not exists awards (
 
 create index if not exists awards_user_idx on awards (user_id);
 create index if not exists awards_status_idx on awards (status);
+
+-- Admin wallet top-ups: liquidity the operator deposits (via mobile money) to
+-- fund prize payouts. Additive table — safe to add to an existing database.
+create table if not exists liquidity_deposits (
+  id          serial primary key,
+  admin_id    integer references users(id) on delete set null,
+  amount_tzs  integer not null,
+  phone       text not null,
+  ntzs_ref    text,                                 -- nTZS deposit/transaction id
+  status      text not null default 'submitted',    -- submitted | confirmed | failed
+  created_at  timestamptz not null default now()
+);
+create index if not exists liquidity_deposits_created_idx on liquidity_deposits (created_at);

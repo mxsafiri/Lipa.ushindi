@@ -165,9 +165,14 @@ export default function AdminConsole({ awards, players, ntzsEnabled }: { awards:
             </div>
             <div className="text-[18px] font-extrabold tracking-[-.01em]">Risiti · Admin backstage</div>
           </div>
-          <Link href="/home" className="text-[13px] font-bold text-leaf-deep">
-            ← Back to app
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link href="/admin/wallet" className="text-[13px] font-bold text-leaf-deep">
+              Wallet
+            </Link>
+            <Link href="/home" className="text-[13px] font-bold text-muted-3">
+              ← Back to app
+            </Link>
+          </div>
         </header>
 
         {msg && (
