@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import StatusBar from "@/components/StatusBar";
 import BottomNav from "@/components/BottomNav";
@@ -46,6 +47,14 @@ export default async function Profile() {
             </div>
           </div>
 
+          {session.is_admin && (
+            <Link
+              href="/admin"
+              className="block w-full mt-6 py-[15px] rounded-[16px] bg-forest text-center text-[15px] font-bold text-white"
+            >
+              Admin backstage
+            </Link>
+          )}
           <LogoutButton />
         </div>
 

@@ -17,12 +17,13 @@ export type AuthUser = {
   pin_hash: string;
   failed_attempts: number;
   locked_until: string | null;
+  is_admin: boolean;
 };
 
 /** Look up a user by their (private) phone number for login. */
 export async function getUserByPhone(phone: string): Promise<AuthUser | null> {
   const rows = (await sql`
-    select id, username, phone, pin_hash, failed_attempts, locked_until
+    select id, username, phone, pin_hash, failed_attempts, locked_until, is_admin
     from users where phone = ${phone} limit 1
   `) as AuthUser[];
   return rows[0] ?? null;
@@ -202,4 +203,136 @@ export async function getRecentReceipts(userId: number, limit = 8) {
     order by created_at desc limit ${limit}
   `) as { code: string; image_hash: string | null; created_at: string }[];
   return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Awards / prizes
+// ---------------------------------------------------------------------------
+
+export type AwardStatus = "pending_claim" | "claimed" | "verified" | "paid" | "rejected";
+
+export type Award = {
+  id: number;
+  user_id: number;
+  username: string;
+  phone: string;
+  prize_label: string;
+  prize_type: "mpesa" | "giftcard";
+  amount: string | null;
+  status: AwardStatus;
+  payout_phone: string | null;
+  giftcard_code: string | null;
+  admin_note: string | null;
+  created_at: string;
+  claimed_at: string | null;
+  resolved_at: string | null;
+};
+
+/** Find a player by username (case-insensitive) — used by the admin to pick a winner. */
+export async function findUserByUsername(
+  username: string
+): Promise<{ id: number; username: string; phone: string } | null> {
+  const rows = (await sql`
+    select id, username, phone from users where lower(username) = lower(${username}) limit 1
+  `) as { id: number; username: string; phone: string }[];
+  return rows[0] ?? null;
+}
+
+/** Top players (admin winner-picker). */
+export async function listTopPlayers(limit = 10) {
+  const rows = (await sql`
+    select u.id, u.username, u.phone, count(r.*)::int as receipts
+    from users u
+    left join receipts r on r.user_id = u.id
+    group by u.id, u.username, u.phone
+    order by receipts desc, u.created_at asc
+    limit ${limit}
+  `) as { id: number; username: string; phone: string; receipts: number }[];
+  return rows;
+}
+
+export async function createAward(input: {
+  userId: number;
+  prizeLabel: string;
+  prizeType: "mpesa" | "giftcard";
+  amount: string | null;
+}): Promise<number> {
+  const rows = (await sql`
+    insert into awards (user_id, prize_label, prize_type, amount)
+    values (${input.userId}, ${input.prizeLabel}, ${input.prizeType}, ${input.amount})
+    returning id
+  `) as { id: number }[];
+  return rows[0].id;
+}
+
+/** All awards for the admin console, newest first. */
+export async function listAwards(limit = 50): Promise<Award[]> {
+  return (await sql`
+    select a.*, u.username, u.phone
+    from awards a join users u on u.id = a.user_id
+    order by a.created_at desc
+    limit ${limit}
+  `) as Award[];
+}
+
+export async function getAward(id: number): Promise<Award | null> {
+  const rows = (await sql`
+    select a.*, u.username, u.phone from awards a join users u on u.id = a.user_id
+    where a.id = ${id} limit 1
+  `) as Award[];
+  return rows[0] ?? null;
+}
+
+/** The player's most recent award (drives the "you won / claim" banner). */
+export async function getLatestAwardForUser(userId: number): Promise<Award | null> {
+  const rows = (await sql`
+    select a.*, u.username, u.phone from awards a join users u on u.id = a.user_id
+    where a.user_id = ${userId} and a.status <> 'rejected'
+    order by a.created_at desc limit 1
+  `) as Award[];
+  return rows[0] ?? null;
+}
+
+/** Player claims a pending award with their (current) number. */
+export async function claimAward(awardId: number, userId: number): Promise<Award | null> {
+  const rows = (await sql`
+    update awards a
+       set status = 'claimed', claimed_at = now(),
+           payout_phone = (select phone from users where id = ${userId})
+     where a.id = ${awardId} and a.user_id = ${userId} and a.status = 'pending_claim'
+     returning a.id
+  `) as { id: number }[];
+  if (rows.length === 0) return null;
+  return getAward(awardId);
+}
+
+/** Admin transitions: verify, pay (M-Pesa), issue gift card, or reject. */
+export async function setAwardStatus(
+  id: number,
+  status: Extract<AwardStatus, "verified" | "paid" | "rejected">,
+  extra: { note?: string | null; giftcardCode?: string | null } = {}
+): Promise<Award | null> {
+  const resolved = status === "paid" || status === "rejected";
+  const rows = (await sql`
+    update awards
+       set status = ${status},
+           admin_note = coalesce(${extra.note ?? null}, admin_note),
+           giftcard_code = coalesce(${extra.giftcardCode ?? null}, giftcard_code),
+           resolved_at = case when ${resolved} then now() else resolved_at end
+     where id = ${id}
+     returning id
+  `) as { id: number }[];
+  if (rows.length === 0) return null;
+  return getAward(id);
+}
+
+/** Admin-side PIN reset (the "recover via support" path). */
+export async function resetUserPin(username: string, pinHash: string): Promise<boolean> {
+  const rows = (await sql`
+    update users
+       set pin_hash = ${pinHash}, failed_attempts = 0, locked_until = null
+     where lower(username) = lower(${username})
+     returning id
+  `) as { id: number }[];
+  return rows.length > 0;
 }

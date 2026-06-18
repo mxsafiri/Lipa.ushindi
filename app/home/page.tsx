@@ -4,8 +4,9 @@ import StatusBar from "@/components/StatusBar";
 import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
 import { getSession } from "@/lib/session";
-import { getStats, getRecentReceipts } from "@/lib/queries";
+import { getStats, getRecentReceipts, getLatestAwardForUser } from "@/lib/queries";
 import { prettyCode } from "@/lib/util";
+import ClaimBanner from "@/components/ClaimBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,10 @@ export default async function Home() {
   const session = getSession();
   if (!session) redirect("/signin");
 
-  const [stats, recent] = await Promise.all([
+  const [stats, recent, award] = await Promise.all([
     getStats(session.id),
     getRecentReceipts(session.id, 6),
+    getLatestAwardForUser(session.id),
   ]);
 
   return (
@@ -82,6 +84,7 @@ export default async function Home() {
 
       <div className="flex-1 bg-white rounded-t-[32px] flex flex-col min-h-0">
         <div className="flex-1 px-[26px] pt-6 pb-2 overflow-y-auto no-scrollbar">
+          {award && <ClaimBanner award={award} />}
           <Link
             href="/capture"
             className="flex items-center gap-[14px] bg-leaf rounded-[18px] px-5 py-[17px]"

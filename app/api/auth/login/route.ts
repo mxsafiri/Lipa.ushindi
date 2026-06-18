@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     await resetFailedAttempts(user.id);
-    setSessionCookie({ id: user.id, username: user.username, phone: user.phone });
+    setSessionCookie({ id: user.id, username: user.username, phone: user.phone, is_admin: user.is_admin });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("login failed", e);

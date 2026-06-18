@@ -1,0 +1,245 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { Award } from "@/lib/queries";
+
+type Player = { id: number; username: string; phone: string; receipts: number };
+
+const STATUS_STYLE: Record<string, string> = {
+  pending_claim: "bg-amber/15 text-[#9A7B49]",
+  claimed: "bg-[#E7EEFB] text-[#3A5B8C]",
+  verified: "bg-[#EFE8FB] text-[#6A3FB0]",
+  paid: "bg-tint-green text-leaf-deep",
+  rejected: "bg-[#F1F1F1] text-[#8B948C]",
+};
+const STATUS_LABEL: Record<string, string> = {
+  pending_claim: "Awaiting claim",
+  claimed: "Claimed",
+  verified: "Verified",
+  paid: "Paid",
+  rejected: "Rejected",
+};
+
+export default function AdminConsole({ awards, players }: { awards: Award[]; players: Player[] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  // create-award form
+  const [username, setUsername] = useState("");
+  const [prizeLabel, setPrizeLabel] = useState("Weekly grand prize");
+  const [prizeType, setPrizeType] = useState<"mpesa" | "giftcard">("mpesa");
+  const [amount, setAmount] = useState("TZS 5,000,000");
+
+  // reset-pin form
+  const [pinUser, setPinUser] = useState("");
+  const [newPin, setNewPin] = useState("");
+
+  async function post(url: string, body: unknown): Promise<Record<string, unknown>> {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return { ok: res.ok, status: res.status, ...(await res.json().catch(() => ({}))) };
+  }
+
+  async function createAward() {
+    if (!username.trim()) return setMsg("Enter a player username.");
+    setBusy(true);
+    setMsg("");
+    const r = await post("/api/admin/awards", { username, prizeLabel, prizeType, amount });
+    setBusy(false);
+    if (r.ok) {
+      setMsg(`Award created for ${username}.`);
+      setUsername("");
+      router.refresh();
+    } else setMsg(r.error === "no_such_user" ? "No player with that username." : "Couldn't create award.");
+  }
+
+  async function act(id: number, body: Record<string, unknown>) {
+    setBusy(true);
+    setMsg("");
+    const r = await post(`/api/admin/awards/${id}`, body);
+    setBusy(false);
+    if (r.ok) router.refresh();
+    else setMsg("Action failed.");
+  }
+
+  function pay(a: Award) {
+    if (a.prize_type === "giftcard") {
+      const code = window.prompt(`Gift card code to issue to ${a.username}:`);
+      if (!code) return;
+      act(a.id, { action: "pay", giftcardCode: code });
+    } else {
+      const ref = window.prompt(`M-Pesa transaction reference (paid ${a.amount ?? ""} to ${a.payout_phone ?? a.phone}):`);
+      if (!ref) return;
+      act(a.id, { action: "pay", note: ref });
+    }
+  }
+
+  async function resetPin() {
+    if (!pinUser.trim()) return setMsg("Enter a username to reset.");
+    if (!/^\d{5}$/.test(newPin)) return setMsg("New PIN must be 5 digits.");
+    setBusy(true);
+    setMsg("");
+    const r = await post("/api/admin/reset-pin", { username: pinUser, pin: newPin });
+    setBusy(false);
+    if (r.ok) {
+      setMsg(`PIN reset for ${pinUser}.`);
+      setPinUser("");
+      setNewPin("");
+    } else setMsg(r.error === "no_such_user" ? "No player with that username." : "Couldn't reset PIN.");
+  }
+
+  const input = "h-11 rounded-xl border border-mist-border bg-mist px-3 text-[14px] text-ink outline-none focus:border-leaf";
+
+  return (
+    <main className="min-h-[100dvh] w-full bg-[#F4F7F4] text-ink">
+      <div className="mx-auto w-full max-w-5xl px-5 py-6 sm:px-8">
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-[10px]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-forest">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6z" />
+              </svg>
+            </div>
+            <div className="text-[18px] font-extrabold tracking-[-.01em]">Risiti · Admin backstage</div>
+          </div>
+          <Link href="/home" className="text-[13px] font-bold text-leaf-deep">
+            ← Back to app
+          </Link>
+        </header>
+
+        {msg && (
+          <div className="mt-4 rounded-xl border border-mist-border bg-white px-4 py-3 text-[13px] font-semibold text-muted-3">
+            {msg}
+          </div>
+        )}
+
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          {/* Create award */}
+          <section className="rounded-2xl border border-mist-border bg-white p-5">
+            <h2 className="text-[15px] font-extrabold">Issue a prize</h2>
+            <p className="mt-1 text-[12.5px] text-muted">Create an award for a player; they claim it with their number.</p>
+            <div className="mt-4 flex flex-col gap-3">
+              <input
+                list="players"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Player username"
+                className={input}
+              />
+              <datalist id="players">
+                {players.map((p) => (
+                  <option key={p.id} value={p.username} />
+                ))}
+              </datalist>
+              <input value={prizeLabel} onChange={(e) => setPrizeLabel(e.target.value)} placeholder="Prize label" className={input} />
+              <div className="flex gap-3">
+                <select value={prizeType} onChange={(e) => setPrizeType(e.target.value as "mpesa" | "giftcard")} className={`${input} flex-1`}>
+                  <option value="mpesa">M-Pesa cash</option>
+                  <option value="giftcard">Gift card</option>
+                </select>
+                <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Value" className={`${input} flex-1`} />
+              </div>
+              <button onClick={createAward} disabled={busy} className="h-11 rounded-xl bg-leaf text-[14px] font-bold text-white disabled:opacity-60">
+                Create award
+              </button>
+            </div>
+          </section>
+
+          {/* Reset PIN */}
+          <section className="rounded-2xl border border-mist-border bg-white p-5">
+            <h2 className="text-[15px] font-extrabold">Reset a PIN</h2>
+            <p className="mt-1 text-[12.5px] text-muted">Support recovery — set a temporary 5-digit PIN for a player.</p>
+            <div className="mt-4 flex flex-col gap-3">
+              <input list="players" value={pinUser} onChange={(e) => setPinUser(e.target.value)} placeholder="Player username" className={input} />
+              <input value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 5))} placeholder="New 5-digit PIN" inputMode="numeric" className={input} />
+              <button onClick={resetPin} disabled={busy} className="h-11 rounded-xl bg-forest text-[14px] font-bold text-white disabled:opacity-60">
+                Reset PIN
+              </button>
+            </div>
+            <div className="mt-4 text-[11px] font-bold uppercase tracking-[.1em] text-muted-2">Top players</div>
+            <div className="mt-2 max-h-[120px] overflow-y-auto text-[12.5px]">
+              {players.map((p) => (
+                <div key={p.id} className="flex justify-between border-b border-[#F1F4F1] py-[6px]">
+                  <span className="font-semibold text-ink">{p.username}</span>
+                  <span className="text-muted">{p.receipts} receipts</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Awards table */}
+        <section className="mt-5 rounded-2xl border border-mist-border bg-white p-5">
+          <h2 className="text-[15px] font-extrabold">Winners &amp; payouts</h2>
+          {awards.length === 0 ? (
+            <p className="mt-3 text-[13px] text-muted">No awards yet. Issue one above.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase tracking-[.08em] text-muted-2">
+                    <th className="py-2 pr-3 font-bold">Player</th>
+                    <th className="py-2 pr-3 font-bold">Prize</th>
+                    <th className="py-2 pr-3 font-bold">Pay to</th>
+                    <th className="py-2 pr-3 font-bold">Status</th>
+                    <th className="py-2 font-bold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {awards.map((a) => (
+                    <tr key={a.id} className="border-t border-[#F1F4F1] align-top">
+                      <td className="py-3 pr-3">
+                        <div className="font-bold text-ink">{a.username}</div>
+                        <div className="text-[11.5px] text-muted">{a.phone}</div>
+                      </td>
+                      <td className="py-3 pr-3">
+                        <div className="font-semibold text-ink">{a.prize_label}</div>
+                        <div className="text-[11.5px] text-muted">
+                          {a.prize_type === "giftcard" ? "Gift card" : "M-Pesa"} · {a.amount ?? "—"}
+                        </div>
+                        {a.giftcard_code && <div className="mt-1 font-mono text-[11.5px] text-leaf-deep">code: {a.giftcard_code}</div>}
+                        {a.admin_note && <div className="mt-1 text-[11px] text-muted">ref: {a.admin_note}</div>}
+                      </td>
+                      <td className="py-3 pr-3 text-[12px] text-ink">{a.payout_phone ?? <span className="text-muted">not yet claimed</span>}</td>
+                      <td className="py-3 pr-3">
+                        <span className={`rounded-full px-[10px] py-[3px] text-[11px] font-bold ${STATUS_STYLE[a.status] ?? ""}`}>
+                          {STATUS_LABEL[a.status] ?? a.status}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <div className="flex flex-wrap gap-2">
+                          {a.status === "claimed" && (
+                            <button onClick={() => act(a.id, { action: "verify" })} disabled={busy} className="rounded-lg bg-[#EFE8FB] px-3 py-[6px] text-[12px] font-bold text-[#6A3FB0]">
+                              Verify
+                            </button>
+                          )}
+                          {(a.status === "verified" || a.status === "claimed") && (
+                            <button onClick={() => pay(a)} disabled={busy} className="rounded-lg bg-leaf px-3 py-[6px] text-[12px] font-bold text-white">
+                              {a.prize_type === "giftcard" ? "Issue card" : "Mark paid"}
+                            </button>
+                          )}
+                          {a.status !== "paid" && a.status !== "rejected" && (
+                            <button onClick={() => window.confirm("Reject this award?") && act(a.id, { action: "reject" })} disabled={busy} className="rounded-lg bg-[#F4F4F4] px-3 py-[6px] text-[12px] font-bold text-[#8B948C]">
+                              Reject
+                            </button>
+                          )}
+                          {(a.status === "paid" || a.status === "rejected") && <span className="text-[12px] text-muted">—</span>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}

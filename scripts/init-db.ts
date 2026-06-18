@@ -69,7 +69,27 @@ async function main() {
       `;
     }
   }
+  // Admin account for the backstage.
+  await sql`
+    insert into users (phone, username, pin_hash, is_admin)
+    values ('+255710000000', 'Admin', ${pinHash}, true)
+    on conflict (phone) do update set is_admin = true
+  `;
+
+  // A demo pending award for the #1 player so the claim flow is visible.
+  const top = (await sql`select id from users where phone = '+255700000001' limit 1`) as { id: number }[];
+  if (top[0]) {
+    const has = (await sql`select id from awards where user_id = ${top[0].id} limit 1`) as { id: number }[];
+    if (has.length === 0) {
+      await sql`
+        insert into awards (user_id, prize_label, prize_type, amount)
+        values (${top[0].id}, 'Weekly grand prize', 'mpesa', 'TZS 5,000,000')
+      `;
+    }
+  }
+
   console.log(`✓ seeded ${ROSTER.length} demo collectors (every demo account's PIN is ${DEMO_PIN})`);
+  console.log(`✓ admin account: username "Admin", phone +255710000000, PIN ${DEMO_PIN}`);
   console.log("Done.");
 }
 
