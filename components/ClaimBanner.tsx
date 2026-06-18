@@ -53,7 +53,7 @@ export default function ClaimBanner({ award }: { award: Award }) {
     );
   }
 
-  if (award.status === "claimed" || award.status === "verified") {
+  if (award.status === "claimed" || award.status === "verified" || award.status === "processing") {
     return (
       <Box tone="blue" title="Claim received ✓">
         We&apos;re verifying and sending <b className="text-ink">{prize}</b> to <b className="text-ink">{award.payout_phone}</b>.

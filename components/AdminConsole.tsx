@@ -11,6 +11,7 @@ const STATUS_STYLE: Record<string, string> = {
   pending_claim: "bg-amber/15 text-[#9A7B49]",
   claimed: "bg-[#E7EEFB] text-[#3A5B8C]",
   verified: "bg-[#EFE8FB] text-[#6A3FB0]",
+  processing: "bg-[#FFF1DD] text-[#9A7B49]",
   paid: "bg-tint-green text-leaf-deep",
   rejected: "bg-[#F1F1F1] text-[#8B948C]",
 };
@@ -18,11 +19,12 @@ const STATUS_LABEL: Record<string, string> = {
   pending_claim: "Awaiting claim",
   claimed: "Claimed",
   verified: "Verified",
+  processing: "Sending…",
   paid: "Paid",
   rejected: "Rejected",
 };
 
-export default function AdminConsole({ awards, players }: { awards: Award[]; players: Player[] }) {
+export default function AdminConsole({ awards, players, ntzsEnabled }: { awards: Award[]; players: Player[]; ntzsEnabled: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -85,6 +87,24 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
       const ref = window.prompt(`M-Pesa transaction reference (paid ${a.amount ?? ""} to ${a.payout_phone ?? a.phone}):`);
       if (!ref) return;
       act(a.id, { action: "pay", note: ref });
+    }
+  }
+
+  async function disburse(a: Award) {
+    const def = (a.amount ?? "").replace(/[^\d]/g, "");
+    const amountStr = window.prompt(`Send nTZS to ${a.payout_phone ?? a.phone}. Amount in TZS:`, def);
+    if (!amountStr) return;
+    const amount = Number(amountStr.replace(/[^\d.]/g, ""));
+    if (!amount) return setMsg("Enter a valid amount.");
+    setBusy(true);
+    setMsg("");
+    const r = await post(`/api/admin/awards/${a.id}/disburse`, { amount });
+    setBusy(false);
+    if (r.ok) {
+      setMsg(`nTZS disbursement sent (ref ${String(r.reference ?? "")}, ${String(r.status ?? "")}).`);
+      router.refresh();
+    } else {
+      setMsg(r.error === "not_configured" ? "Add NTZS_API_KEY to enable nTZS payouts." : "nTZS disbursement failed.");
     }
   }
 
@@ -315,6 +335,11 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
                           {a.status === "claimed" && (
                             <button onClick={() => act(a.id, { action: "verify" })} disabled={busy} className="rounded-lg bg-[#EFE8FB] px-3 py-[6px] text-[12px] font-bold text-[#6A3FB0]">
                               Verify
+                            </button>
+                          )}
+                          {ntzsEnabled && a.prize_type === "mpesa" && (a.status === "verified" || a.status === "claimed") && (
+                            <button onClick={() => disburse(a)} disabled={busy} className="rounded-lg bg-forest px-3 py-[6px] text-[12px] font-bold text-white">
+                              Pay via nTZS
                             </button>
                           )}
                           {(a.status === "verified" || a.status === "claimed") && (

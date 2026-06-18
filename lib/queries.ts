@@ -209,7 +209,7 @@ export async function getRecentReceipts(userId: number, limit = 8) {
 // Awards / prizes
 // ---------------------------------------------------------------------------
 
-export type AwardStatus = "pending_claim" | "claimed" | "verified" | "paid" | "rejected";
+export type AwardStatus = "pending_claim" | "claimed" | "verified" | "processing" | "paid" | "rejected";
 
 export type Award = {
   id: number;
@@ -332,7 +332,7 @@ export async function claimAward(awardId: number, userId: number): Promise<Award
 /** Admin transitions: verify, pay (M-Pesa), issue gift card, or reject. */
 export async function setAwardStatus(
   id: number,
-  status: Extract<AwardStatus, "verified" | "paid" | "rejected">,
+  status: Extract<AwardStatus, "verified" | "processing" | "paid" | "rejected">,
   extra: { note?: string | null; giftcardCode?: string | null } = {}
 ): Promise<Award | null> {
   const resolved = status === "paid" || status === "rejected";
