@@ -1,26 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getAward, setAwardStatus } from "@/lib/queries";
+import { findAwardByNtzsId, setAwardStatus } from "@/lib/queries";
 import { isSettled, isFailed } from "@/lib/ntzs";
 
 export const runtime = "nodejs";
 
 /**
- * nTZS settlement webhook — flips a 'processing' award to 'paid' (or 'rejected')
- * once the disbursement settles.
+ * nTZS partner settlement webhook — flips a 'processing' award to 'paid' (or
+ * 'rejected') once the disbursement settles.
  *
- * ⚠️ CONFIRM the signature scheme + payload shape against the nTZS docs (the
- * secret looks like Snippe's `whsec_...`). The HMAC check + the header name +
- * the reference/status field names below are best-effort placeholders.
+ * Matched to the open-source payload shape: { type: 'payout.completed' |
+ * 'payout.failed', data: { status, reference, failure_reason,
+ * metadata: { burn_request_id } } }, signed with the partner webhook secret
+ * via `x-webhook-signature` (+ `x-webhook-timestamp`).
+ *
+ * ⚠️ Confirm the HMAC encoding (hex vs base64, and whether the timestamp is
+ * prefixed) against your nTZS partner webhook sender, then tighten if needed.
  */
 export async function POST(req: NextRequest) {
   const raw = await req.text();
 
   const secret = process.env.NTZS_WEBHOOK_SECRET;
   if (secret) {
-    const sig = req.headers.get("x-signature") || req.headers.get("x-snippe-signature") || "";
-    const expected = crypto.createHmac("sha256", secret).update(raw).digest("hex");
-    if (sig && sig !== expected) return NextResponse.json({ error: "bad_signature" }, { status: 401 });
+    const sig = req.headers.get("x-webhook-signature") || "";
+    const ts = req.headers.get("x-webhook-timestamp") || "";
+    const signedBody = ts ? `${ts}.${raw}` : raw;
+    const expected = crypto.createHmac("sha256", secret).update(signedBody).digest("hex");
+    if (!sig || sig !== expected) return NextResponse.json({ error: "bad_signature" }, { status: 401 });
   }
 
   let evt: Record<string, any> = {};
@@ -30,17 +36,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bad_json" }, { status: 400 });
   }
 
-  const reference = String(evt.reference ?? evt.data?.reference ?? "");
-  const status = String(evt.status ?? evt.data?.status ?? "");
-  const m = /award-(\d+)/.exec(reference);
-  if (!m) return NextResponse.json({ ok: true, ignored: true });
+  const type = String(evt.type ?? "");
+  const data = evt.data ?? {};
+  const status = String(data.status ?? "");
+  const burnId = String(data?.metadata?.burn_request_id ?? data.reference ?? "");
+  if (!burnId) return NextResponse.json({ ok: true, ignored: true });
 
-  const id = Number(m[1]);
-  const award = await getAward(id);
+  const award = await findAwardByNtzsId(burnId);
   if (!award) return NextResponse.json({ ok: true, ignored: true });
 
-  if (isSettled(status)) await setAwardStatus(id, "paid", {});
-  else if (isFailed(status)) await setAwardStatus(id, "rejected", { note: "nTZS disbursement failed" });
-
+  if (type === "payout.completed" || isSettled(status)) {
+    await setAwardStatus(award.id, "paid", {});
+  } else if (type === "payout.failed" || isFailed(status)) {
+    await setAwardStatus(award.id, "rejected", { note: `nTZS payout failed: ${data.failure_reason ?? status}` });
+  }
   return NextResponse.json({ ok: true });
 }

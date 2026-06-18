@@ -306,6 +306,17 @@ export async function getAward(id: number): Promise<Award | null> {
   return rows[0] ?? null;
 }
 
+/** Match a settlement webhook back to an award via the nTZS burn id stored in admin_note. */
+export async function findAwardByNtzsId(burnId: string): Promise<Award | null> {
+  const like = `%${burnId}%`;
+  const rows = (await sql`
+    select a.*, u.username, u.phone from awards a join users u on u.id = a.user_id
+    where a.admin_note like ${like} and a.status in ('processing', 'verified', 'claimed')
+    order by a.created_at desc limit 1
+  `) as Award[];
+  return rows[0] ?? null;
+}
+
 /** The player's most recent award (drives the "you won / claim" banner). */
 export async function getLatestAwardForUser(userId: number): Promise<Award | null> {
   const rows = (await sql`

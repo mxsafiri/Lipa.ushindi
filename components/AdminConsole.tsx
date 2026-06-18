@@ -342,7 +342,7 @@ export default function AdminConsole({ awards, players, ntzsEnabled }: { awards:
                               Pay via nTZS
                             </button>
                           )}
-                          {(a.status === "verified" || a.status === "claimed") && (
+                          {(a.status === "verified" || a.status === "claimed" || a.status === "processing") && (
                             <button onClick={() => pay(a)} disabled={busy} className="rounded-lg bg-leaf px-3 py-[6px] text-[12px] font-bold text-white">
                               {a.prize_type === "giftcard" ? "Issue card" : "Mark paid"}
                             </button>
