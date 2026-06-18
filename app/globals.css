@@ -12,23 +12,51 @@ body {
   padding: 0;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
   background: #cdebd3;
   background-image: radial-gradient(130% 90% at 82% -10%, rgba(255, 255, 255, 0.55), transparent 55%),
     radial-gradient(80% 60% at 0% 110%, rgba(82, 177, 106, 0.22), transparent 60%);
   background-attachment: fixed;
+  min-height: 100dvh;
 }
 
-/* Mobile-app shell: centre a phone-width column on larger screens */
+/* ---------------------------------------------------------------------------
+   App shell
+   - Phones: a real, full-bleed mobile web app (edge to edge).
+   - Tablets / desktop: the same app presented as an intentional, centred
+     phone-style "device" floating on the brand backdrop — not a stretched
+     artboard. Scoped with :has() so the marketing landing page (which has no
+     .app-shell) keeps the full width.
+--------------------------------------------------------------------------- */
 .app-shell {
   width: 100%;
-  max-width: 440px;
   margin: 0 auto;
   min-height: 100dvh;
   position: relative;
   overflow: hidden;
+}
+
+@media (min-width: 600px) {
+  body:has(.app-shell) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 20px;
+  }
+  body:has(.app-shell) .app-shell {
+    max-width: 412px;
+    min-height: 0;
+    height: min(100dvh - 56px, 884px);
+    border-radius: 46px;
+    box-shadow: 0 40px 90px -30px rgba(16, 38, 27, 0.55), 0 0 0 1px rgba(16, 38, 27, 0.05);
+  }
 }
 
 /* Hide scrollbars inside scroll regions for a native feel */
@@ -54,4 +82,12 @@ body {
   0% { transform: translateY(-12px); opacity: 0; }
   15% { opacity: 1; }
   100% { transform: translateY(14px) rotate(var(--r, 20deg)); opacity: 1; }
+}
+
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float {
+  animation: float-soft 6s ease-in-out infinite;
 }
