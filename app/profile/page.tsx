@@ -18,8 +18,8 @@ export default async function Profile() {
       <StatusBar />
 
       <div className="px-7 pt-[14px] pb-[26px] flex flex-col items-center">
-        <Avatar name={session.name} size={72} radius={22} bg="#52B16A" />
-        <div className="text-[21px] font-extrabold text-white mt-3">{session.name}</div>
+        <Avatar name={session.username} size={72} radius={22} bg="#52B16A" />
+        <div className="text-[21px] font-extrabold text-white mt-3">{session.username}</div>
         <div className="text-[13px] text-white/65 mt-1">{session.phone}</div>
       </div>
 

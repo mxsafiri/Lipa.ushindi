@@ -26,7 +26,7 @@ export default async function Leaderboard() {
       </div>
 
       <div className="flex-1 bg-white rounded-t-[32px] flex flex-col min-h-0">
-        <LeaderboardView initialRows={rows} you={{ name: session.name }} stats={stats} />
+        <LeaderboardView initialRows={rows} you={{ name: session.username }} stats={stats} />
         <BottomNav active="board" />
       </div>
     </div>

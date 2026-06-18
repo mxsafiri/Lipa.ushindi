@@ -2,10 +2,18 @@
 -- Run with: npm run db:init  (requires DATABASE_URL)
 
 create table if not exists users (
-  id          serial primary key,
-  phone       text unique not null,
-  name        text not null,
-  created_at  timestamptz not null default now()
+  id              serial primary key,
+  -- Private. The phone is the M-Pesa payout / prize-claim number, never shown
+  -- publicly. UNIQUE keeps it "one number, one fair player".
+  phone           text unique not null,
+  -- Public display handle shown on the leaderboard and profile.
+  username        text unique not null,
+  -- scrypt hash of the 5-digit PIN. The raw PIN is never stored.
+  pin_hash        text not null,
+  -- Brute-force guard: consecutive wrong-PIN tries + a temporary lock window.
+  failed_attempts integer not null default 0,
+  locked_until    timestamptz,
+  created_at      timestamptz not null default now()
 );
 
 create table if not exists receipts (

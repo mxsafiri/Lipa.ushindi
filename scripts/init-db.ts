@@ -4,10 +4,12 @@
  *
  * Creates the schema and populates a demo leaderboard roster so the deployed
  * app looks alive immediately. Re-runnable: it won't duplicate seed users.
+ * Every demo account uses the PIN 12345 (sign in with its phone number).
  */
 import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { hashPin } from "../lib/pin";
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -16,21 +18,23 @@ if (!url) {
 }
 const sql = neon(url);
 
-// Demo competitors — names + weekly receipt counts straight from the design.
-const ROSTER: { phone: string; name: string; count: number }[] = [
-  { phone: "+255700000001", name: "Neema Joseph", count: 41 },
-  { phone: "+255700000002", name: "Baraka Mushi", count: 38 },
-  { phone: "+255700000003", name: "Zawadi Said", count: 35 },
-  { phone: "+255700000004", name: "Juma Rashid", count: 31 },
-  { phone: "+255700000005", name: "Fatma Mohamed", count: 29 },
-  { phone: "+255700000006", name: "Halima Ally", count: 27 },
-  { phone: "+255700000007", name: "Salama Omary", count: 26 },
-  { phone: "+255700000008", name: "Tatu Bakari", count: 25 },
-  { phone: "+255700000009", name: "Rehema Hassan", count: 25 },
-  { phone: "+255700000010", name: "Mwajuma Iddi", count: 24 },
-  { phone: "+255700000011", name: "Asha Komba", count: 24 },
-  { phone: "+255700000012", name: "Daudi Ng'wale", count: 24 },
-  { phone: "+255700000013", name: "Upendo Kile", count: 23 },
+const DEMO_PIN = "12345";
+
+// Demo competitors — usernames + weekly receipt counts straight from the design.
+const ROSTER: { phone: string; username: string; count: number }[] = [
+  { phone: "+255700000001", username: "Neema Joseph", count: 41 },
+  { phone: "+255700000002", username: "Baraka Mushi", count: 38 },
+  { phone: "+255700000003", username: "Zawadi Said", count: 35 },
+  { phone: "+255700000004", username: "Juma Rashid", count: 31 },
+  { phone: "+255700000005", username: "Fatma Mohamed", count: 29 },
+  { phone: "+255700000006", username: "Halima Ally", count: 27 },
+  { phone: "+255700000007", username: "Salama Omary", count: 26 },
+  { phone: "+255700000008", username: "Tatu Bakari", count: 25 },
+  { phone: "+255700000009", username: "Rehema Hassan", count: 25 },
+  { phone: "+255700000010", username: "Mwajuma Iddi", count: 24 },
+  { phone: "+255700000011", username: "Asha Komba", count: 24 },
+  { phone: "+255700000012", username: "Daudi Ngwale", count: 24 },
+  { phone: "+255700000013", username: "Upendo Kile", count: 23 },
 ];
 
 async function main() {
@@ -41,10 +45,12 @@ async function main() {
   }
   console.log("✓ schema ready");
 
+  const pinHash = hashPin(DEMO_PIN);
   for (const u of ROSTER) {
     const rows = (await sql`
-      insert into users (phone, name) values (${u.phone}, ${u.name})
-      on conflict (phone) do update set name = excluded.name
+      insert into users (phone, username, pin_hash)
+      values (${u.phone}, ${u.username}, ${pinHash})
+      on conflict (phone) do update set username = excluded.username
       returning id
     `) as { id: number }[];
     const id = rows[0].id;
@@ -63,7 +69,7 @@ async function main() {
       `;
     }
   }
-  console.log(`✓ seeded ${ROSTER.length} demo collectors`);
+  console.log(`✓ seeded ${ROSTER.length} demo collectors (every demo account's PIN is ${DEMO_PIN})`);
   console.log("Done.");
 }
 

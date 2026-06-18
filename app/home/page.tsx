@@ -37,7 +37,7 @@ export default async function Home() {
       <div className="flex items-center justify-between px-[26px] pt-4 pb-4">
         <div>
           <div className="text-[13px] text-white/70">Habari,</div>
-          <div className="text-[21px] font-extrabold text-white tracking-[-.01em]">{session.name}</div>
+          <div className="text-[21px] font-extrabold text-white tracking-[-.01em]">{session.username}</div>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/draw" className="w-[42px] h-[42px] rounded-[13px] flex items-center justify-center relative" style={{ border: "1.5px solid rgba(255,255,255,.2)" }}>
@@ -48,7 +48,7 @@ export default async function Home() {
             <div className="absolute top-[9px] right-[10px] w-2 h-2 rounded-full bg-amber" style={{ border: "2px solid #1C4A2A" }} />
           </Link>
           <Link href="/profile">
-            <Avatar name={session.name} size={44} radius={14} bg="#52B16A" />
+            <Avatar name={session.username} size={44} radius={14} bg="#52B16A" />
           </Link>
         </div>
       </div>

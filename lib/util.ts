@@ -49,6 +49,12 @@ export function phoneIsValid(phone: string): boolean {
   return /^\+?\d{9,15}$/.test(phone.replace(/\s/g, ""));
 }
 
+/** Public display handle: 3–20 chars, letters/numbers/space/dot/underscore. */
+export function usernameIsValid(name: string): boolean {
+  const v = name.trim();
+  return v.length >= 3 && v.length <= 20 && /^[A-Za-z0-9 ._]+$/.test(v);
+}
+
 const AVATAR_PALETTE = ["#5B8DEF", "#E45C5C", "#52B16A", "#8E63C9", "#3DAFA0", "#EFA03C", "#CE8A5B", "#D9719B"];
 
 /** Deterministic avatar colour from a name, drawn from the design's palette. */

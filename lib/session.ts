@@ -4,7 +4,7 @@ import crypto from "crypto";
 const COOKIE = "risiti_session";
 const SECRET = process.env.SESSION_SECRET || "dev-insecure-secret-change-me";
 
-export type SessionUser = { id: number; name: string; phone: string };
+export type SessionUser = { id: number; username: string; phone: string };
 
 function sign(payload: string): string {
   return crypto.createHmac("sha256", SECRET).update(payload).digest("base64url");

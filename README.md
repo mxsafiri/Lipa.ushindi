@@ -31,15 +31,17 @@ npm run db:init               # creates schema + seeds a demo leaderboard
 npm run dev                   # http://localhost:3000
 ```
 
-Sign-in uses a **mock OTP**: enter any name + phone, then any 5-digit code
-(e.g. `42910`). Swap in a real provider (Twilio Verify) by editing
-`app/api/auth/verify-otp/route.ts` only.
+Sign-in is **phone + a 5-digit PIN** — no SMS. Create an account with a
+username + phone + PIN, or sign in with phone + PIN. PINs are stored as a
+salted scrypt hash (`lib/pin.ts`) and the login route locks an account after
+repeated wrong tries. Forgotten PINs are reset by support (admin-side).
+The seed (`npm run db:init`) creates demo accounts whose PIN is `12345`.
 
 ## Database
 
 Neon Postgres. Schema in `db/schema.sql`, applied + seeded by `npm run db:init`.
 
-- `users` — id, phone (unique), name
+- `users` — id, phone (unique, private payout number), username (unique, public), pin_hash, lockout fields
 - `receipts` — id, user_id, **code (unique)**, image_hash, created_at
 
 ## Deploy on Netlify (auto-deploy from `main`)
@@ -55,7 +57,7 @@ Neon Postgres. Schema in `db/schema.sql`, applied + seeded by `npm run db:init`.
 
 ## Screens
 
-1. **Verify number** — phone + mock OTP
+1. **Sign in** — phone + 5-digit PIN (new players also pick a username)
 2. **Capture receipt** — live QR scan (jsQR) + gallery upload + manual entry
 3. **Receipt verified** — success ticket with the coral integrity-guard box
 4. **Leaderboard** — ranked by unique receipts, This week / All time, your-rank highlight
