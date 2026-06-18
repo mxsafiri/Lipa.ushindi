@@ -131,7 +131,7 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
     } else setMsg("Couldn't run the draw.");
   }
 
-  const input = "h-11 rounded-xl border border-mist-border bg-mist px-3 text-[14px] text-ink outline-none focus:border-leaf";
+  const input = "h-11 rounded-xl border border-mist-border bg-white px-3 text-[14px] text-ink outline-none focus:border-leaf";
 
   return (
     <main className="min-h-[100dvh] w-full bg-[#F4F7F4] text-ink">
@@ -151,14 +151,14 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
         </header>
 
         {msg && (
-          <div className="mt-4 rounded-xl border border-mist-border bg-white px-4 py-3 text-[13px] font-semibold text-muted-3">
+          <div className="mt-4 rounded-xl bg-soft-green px-4 py-3 text-[13px] font-semibold text-forest">
             {msg}
           </div>
         )}
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <div className="mt-6 grid gap-8 border-t border-mist-border pt-6 lg:grid-cols-2 lg:gap-x-12">
           {/* Create award */}
-          <section className="rounded-2xl border border-mist-border bg-white p-5">
+          <section>
             <h2 className="text-[15px] font-extrabold">Issue a prize</h2>
             <p className="mt-1 text-[12.5px] text-muted">Create an award for a player; they claim it with their number.</p>
             <div className="mt-4 flex flex-col gap-3">
@@ -189,7 +189,7 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
           </section>
 
           {/* Reset PIN */}
-          <section className="rounded-2xl border border-mist-border bg-white p-5">
+          <section>
             <h2 className="text-[15px] font-extrabold">Reset a PIN</h2>
             <p className="mt-1 text-[12.5px] text-muted">Support recovery — set a temporary 5-digit PIN for a player.</p>
             <div className="mt-4 flex flex-col gap-3">
@@ -212,7 +212,7 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
         </div>
 
         {/* Run a draw */}
-        <section className="mt-5 rounded-2xl border border-mist-border bg-white p-5">
+        <section className="mt-6 border-t border-mist-border pt-6">
           <h2 className="text-[15px] font-extrabold">Run a draw</h2>
           <p className="mt-1 text-[12.5px] text-muted">Award the top players from the leaderboard in one go.</p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -273,7 +273,7 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
         </section>
 
         {/* Awards table */}
-        <section className="mt-5 rounded-2xl border border-mist-border bg-white p-5">
+        <section className="mt-6 border-t border-mist-border pt-6">
           <h2 className="text-[15px] font-extrabold">Winners &amp; payouts</h2>
           {awards.length === 0 ? (
             <p className="mt-3 text-[13px] text-muted">No awards yet. Issue one above.</p>
