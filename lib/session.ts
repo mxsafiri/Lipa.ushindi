@@ -20,7 +20,10 @@ export function decodeSession(value: string | undefined): SessionUser | null {
   if (!value) return null;
   const [payload, sig] = value.split(".");
   if (!payload || !sig) return null;
-  if (sign(payload) !== sig) return null;
+  const expected = sign(payload);
+  const a = Buffer.from(expected);
+  const b = Buffer.from(sig);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   try {
     return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
   } catch {

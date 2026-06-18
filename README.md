@@ -35,7 +35,10 @@ Sign-in is **phone + a 5-digit PIN** — no SMS. Create an account with a
 username + phone + PIN, or sign in with phone + PIN. PINs are stored as a
 salted scrypt hash (`lib/pin.ts`) and the login route locks an account after
 repeated wrong tries. Forgotten PINs are reset by support (admin-side).
-The seed (`npm run db:init`) creates demo accounts whose PIN is `12345`.
+`npm run db:init` creates the schema. Set `ADMIN_PHONE` + `ADMIN_PIN` to
+bootstrap your real admin; set `SEED_DEMO=1` (demos/local only) to also seed a
+demo roster + demo admin (all PIN `12345`). Production never gets a known-PIN
+admin unless you opt in.
 
 ## Database
 

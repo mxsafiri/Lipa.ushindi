@@ -20,13 +20,20 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   const raw = await req.text();
 
+  // Fail closed: never trust an unsigned settlement event. Settlement only
+  // happens when NTZS_WEBHOOK_SECRET is configured and the signature matches.
   const secret = process.env.NTZS_WEBHOOK_SECRET;
-  if (secret) {
+  if (!secret) return NextResponse.json({ error: "webhook_not_configured" }, { status: 503 });
+  {
     const sig = req.headers.get("x-webhook-signature") || "";
     const ts = req.headers.get("x-webhook-timestamp") || "";
     const signedBody = ts ? `${ts}.${raw}` : raw;
     const expected = crypto.createHmac("sha256", secret).update(signedBody).digest("hex");
-    if (!sig || sig !== expected) return NextResponse.json({ error: "bad_signature" }, { status: 401 });
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return NextResponse.json({ error: "bad_signature" }, { status: 401 });
+    }
   }
 
   let evt: Record<string, any> = {};

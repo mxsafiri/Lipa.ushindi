@@ -1,10 +1,16 @@
 /**
- * One-time database setup + demo seed.
+ * Database setup + (optional) demo seed.
  *   DATABASE_URL=postgres://... npm run db:init
  *
- * Creates the schema and populates a demo leaderboard roster so the deployed
- * app looks alive immediately. Re-runnable: it won't duplicate seed users.
- * Every demo account uses the PIN 12345 (sign in with its phone number).
+ * Always creates/updates the schema. Then:
+ *  - If ADMIN_PHONE + ADMIN_PIN are set, creates/promotes that real admin
+ *    (recommended for production — no shared/known PIN).
+ *  - If SEED_DEMO is set, populates a demo leaderboard roster + a demo admin
+ *    + a demo award (all PIN 12345) so the app looks alive. Off by default so
+ *    production never ends up with a known-PIN admin.
+ *
+ * Production:  ADMIN_PHONE="+255..." ADMIN_PIN="12345" npm run db:init
+ * Demo/local:  SEED_DEMO=1 npm run db:init
  */
 import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "fs";
@@ -37,14 +43,34 @@ const ROSTER: { phone: string; username: string; count: number }[] = [
   { phone: "+255700000013", username: "Upendo Kile", count: 23 },
 ];
 
-async function main() {
+async function applySchema() {
   const schema = readFileSync(join(process.cwd(), "db", "schema.sql"), "utf8");
   // neon http driver runs one statement per call; split on ; safely.
   for (const stmt of schema.split(/;\s*$/m).map((s) => s.trim()).filter(Boolean)) {
     await sql(stmt);
   }
   console.log("✓ schema ready");
+}
 
+async function bootstrapAdmin() {
+  const phone = process.env.ADMIN_PHONE?.replace(/\s/g, "");
+  const pin = process.env.ADMIN_PIN;
+  if (!phone || !pin) return;
+  if (!/^\d{5}$/.test(pin)) {
+    console.warn("• ADMIN_PIN must be 5 digits — skipping admin bootstrap.");
+    return;
+  }
+  const username = process.env.ADMIN_USERNAME?.trim() || "Admin";
+  await sql`
+    insert into users (phone, username, pin_hash, is_admin)
+    values (${phone}, ${username}, ${hashPin(pin)}, true)
+    on conflict (phone)
+      do update set is_admin = true, pin_hash = excluded.pin_hash, username = excluded.username
+  `;
+  console.log(`✓ admin ready: "${username}" (${phone})`);
+}
+
+async function seedDemo() {
   const pinHash = hashPin(DEMO_PIN);
   for (const u of ROSTER) {
     const rows = (await sql`
@@ -69,7 +95,8 @@ async function main() {
       `;
     }
   }
-  // Admin account for the backstage.
+
+  // Demo admin (known PIN) — demo only.
   await sql`
     insert into users (phone, username, pin_hash, is_admin)
     values ('+255710000000', 'Admin', ${pinHash}, true)
@@ -87,9 +114,17 @@ async function main() {
       `;
     }
   }
+  console.log(`✓ seeded ${ROSTER.length} demo collectors + demo admin (all PIN ${DEMO_PIN})`);
+}
 
-  console.log(`✓ seeded ${ROSTER.length} demo collectors (every demo account's PIN is ${DEMO_PIN})`);
-  console.log(`✓ admin account: username "Admin", phone +255710000000, PIN ${DEMO_PIN}`);
+async function main() {
+  await applySchema();
+  await bootstrapAdmin();
+  if (process.env.SEED_DEMO) {
+    await seedDemo();
+  } else {
+    console.log("• Skipping demo seed (set SEED_DEMO=1 to populate demo data).");
+  }
   console.log("Done.");
 }
 
