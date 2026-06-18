@@ -265,6 +265,29 @@ export async function createAward(input: {
   return rows[0].id;
 }
 
+/**
+ * Create an award for a user unless they already have an unresolved one
+ * (pending_claim/claimed/verified). Returns true if an award was created.
+ * Used by the winner-picker so re-running a draw can't stack duplicates.
+ */
+export async function createAwardIfNoActive(
+  userId: number,
+  prizeLabel: string,
+  prizeType: "mpesa" | "giftcard",
+  amount: string | null
+): Promise<boolean> {
+  const rows = (await sql`
+    insert into awards (user_id, prize_label, prize_type, amount)
+    select ${userId}, ${prizeLabel}, ${prizeType}, ${amount}
+    where not exists (
+      select 1 from awards
+      where user_id = ${userId} and status in ('pending_claim', 'claimed', 'verified')
+    )
+    returning id
+  `) as { id: number }[];
+  return rows.length > 0;
+}
+
 /** All awards for the admin console, newest first. */
 export async function listAwards(limit = 50): Promise<Award[]> {
   return (await sql`

@@ -37,6 +37,14 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
   const [pinUser, setPinUser] = useState("");
   const [newPin, setNewPin] = useState("");
 
+  // draw / winner-picker
+  const [drawRange, setDrawRange] = useState<"week" | "all">("week");
+  const [drawN, setDrawN] = useState(3);
+  const [drawLabel, setDrawLabel] = useState("Weekly prize");
+  const [drawType, setDrawType] = useState<"mpesa" | "giftcard">("mpesa");
+  const [drawAmount, setDrawAmount] = useState("TZS 100,000");
+  const [preview, setPreview] = useState<{ id: number; username: string; receipts: number }[] | null>(null);
+
   async function post(url: string, body: unknown): Promise<Record<string, unknown>> {
     const res = await fetch(url, {
       method: "POST",
@@ -92,6 +100,35 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
       setPinUser("");
       setNewPin("");
     } else setMsg(r.error === "no_such_user" ? "No player with that username." : "Couldn't reset PIN.");
+  }
+
+  async function loadPreview() {
+    setBusy(true);
+    setMsg("");
+    const res = await fetch(`/api/admin/draw?range=${drawRange}&topN=${drawN}`);
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    setPreview(res.ok ? (data.players ?? []) : []);
+  }
+
+  async function runDraw() {
+    setBusy(true);
+    setMsg("");
+    const r = await post("/api/admin/draw", {
+      range: drawRange,
+      topN: drawN,
+      prizeLabel: drawLabel,
+      prizeType: drawType,
+      amount: drawAmount,
+    });
+    setBusy(false);
+    if (r.ok) {
+      const created = Number(r.created);
+      const skipped = Number(r.skipped);
+      setMsg(`Created ${created} award${created === 1 ? "" : "s"}${skipped ? `, skipped ${skipped} already-awarded` : ""}.`);
+      setPreview(null);
+      router.refresh();
+    } else setMsg("Couldn't run the draw.");
   }
 
   const input = "h-11 rounded-xl border border-mist-border bg-mist px-3 text-[14px] text-ink outline-none focus:border-leaf";
@@ -173,6 +210,67 @@ export default function AdminConsole({ awards, players }: { awards: Award[]; pla
             </div>
           </section>
         </div>
+
+        {/* Run a draw */}
+        <section className="mt-5 rounded-2xl border border-mist-border bg-white p-5">
+          <h2 className="text-[15px] font-extrabold">Run a draw</h2>
+          <p className="mt-1 text-[12.5px] text-muted">Award the top players from the leaderboard in one go.</p>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-[.08em] text-muted-2">
+              Range
+              <select value={drawRange} onChange={(e) => { setDrawRange(e.target.value as "week" | "all"); setPreview(null); }} className={input}>
+                <option value="week">This week</option>
+                <option value="all">All time</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-[.08em] text-muted-2">
+              How many
+              <select value={drawN} onChange={(e) => { setDrawN(Number(e.target.value)); setPreview(null); }} className={input}>
+                {[1, 3, 5, 10].map((n) => (
+                  <option key={n} value={n}>Top {n}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-[11px] font-bold uppercase tracking-[.08em] text-muted-2">
+              Prize label
+              <input value={drawLabel} onChange={(e) => setDrawLabel(e.target.value)} className={input} />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-[.08em] text-muted-2">
+              Type
+              <select value={drawType} onChange={(e) => setDrawType(e.target.value as "mpesa" | "giftcard")} className={input}>
+                <option value="mpesa">M-Pesa</option>
+                <option value="giftcard">Gift card</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-[.08em] text-muted-2">
+              Value
+              <input value={drawAmount} onChange={(e) => setDrawAmount(e.target.value)} className={input} />
+            </label>
+            <button onClick={loadPreview} disabled={busy} className="h-11 rounded-xl bg-soft-green px-4 text-[13px] font-bold text-forest disabled:opacity-60">
+              Preview
+            </button>
+            <button onClick={runDraw} disabled={busy} className="h-11 rounded-xl bg-amber px-4 text-[13px] font-bold text-white disabled:opacity-60">
+              Create awards
+            </button>
+          </div>
+          {preview && (
+            <div className="mt-4 text-[13px]">
+              {preview.length === 0 ? (
+                <div className="text-muted">No players in this range yet.</div>
+              ) : (
+                <>
+                  <div className="mb-1 text-[11px] font-bold uppercase tracking-[.08em] text-muted-2">Will award</div>
+                  {preview.map((p, i) => (
+                    <div key={p.id} className="flex justify-between border-b border-[#F1F4F1] py-[6px]">
+                      <span className="font-semibold text-ink">{i + 1}. {p.username}</span>
+                      <span className="text-muted">{p.receipts} receipts</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* Awards table */}
         <section className="mt-5 rounded-2xl border border-mist-border bg-white p-5">
