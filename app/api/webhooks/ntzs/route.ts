@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { findAwardByNtzsId, setAwardStatus } from "@/lib/queries";
+import { findAwardByNtzsId, setAwardStatus, updateLiquidityDepositStatus } from "@/lib/queries";
 import { isSettled, isFailed } from "@/lib/ntzs";
 
 export const runtime = "nodejs";
@@ -39,6 +39,19 @@ export async function POST(req: NextRequest) {
   const type = String(evt.type ?? "");
   const data = evt.data ?? {};
   const status = String(data.status ?? "");
+
+  // --- Deposit / liquidity top-up settlement (payment.*) ---
+  if (type.startsWith("payment") || data?.metadata?.deposit_request_id) {
+    const refs = [String(data?.metadata?.deposit_request_id ?? ""), String(data.reference ?? "")];
+    if (type === "payment.completed" || isSettled(status)) {
+      await updateLiquidityDepositStatus(refs, "confirmed");
+    } else if (type === "payment.failed" || isFailed(status)) {
+      await updateLiquidityDepositStatus(refs, "failed");
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // --- Payout / prize settlement (payout.*) ---
   const burnId = String(data?.metadata?.burn_request_id ?? data.reference ?? "");
   if (!burnId) return NextResponse.json({ ok: true, ignored: true });
 

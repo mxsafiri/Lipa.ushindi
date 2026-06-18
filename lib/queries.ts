@@ -410,3 +410,15 @@ export async function totalLiquidity(): Promise<number> {
   }[];
   return r[0]?.n ?? 0;
 }
+
+/** Settle a liquidity top-up from the deposit webhook, matching the nTZS ref. */
+export async function updateLiquidityDepositStatus(refs: string[], status: string): Promise<boolean> {
+  const clean = refs.filter(Boolean);
+  if (clean.length === 0) return false;
+  const rows = (await sql`
+    update liquidity_deposits set status = ${status}
+    where ntzs_ref = any(${clean}) and status = 'submitted'
+    returning id
+  `) as { id: number }[];
+  return rows.length > 0;
+}
