@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background: #cdebd3;
+  background-image: radial-gradient(130% 90% at 82% -10%, rgba(255, 255, 255, 0.55), transparent 55%),
+    radial-gradient(80% 60% at 0% 110%, rgba(82, 177, 106, 0.22), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Mobile-app shell: centre a phone-width column on larger screens */
+.app-shell {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hide scrollbars inside scroll regions for a native feel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100px); opacity: 0; }
+}
+.animate-scan {
+  animation: scanline 2.4s ease-in-out infinite;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-12px); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(14px) rotate(var(--r, 20deg)); opacity: 1; }
+}
