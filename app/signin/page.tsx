@@ -143,7 +143,7 @@ export default function SignIn() {
                     onKeyDown={(e) => onKey(i, e)}
                     inputMode="numeric"
                     maxLength={1}
-                    className="flex-1 h-16 rounded-2xl text-center text-[26px] font-extrabold text-ink outline-none"
+                    className="flex-1 min-w-0 h-16 rounded-2xl text-center text-[26px] font-extrabold text-ink outline-none"
                     style={
                       active
                         ? { background: "#fff", border: "2.2px solid #52B16A", boxShadow: "0 8px 18px -10px rgba(82,177,106,.6)" }
