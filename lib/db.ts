@@ -5,13 +5,28 @@ import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 // The real DATABASE_URL is read on the first query, at runtime.
 let client: NeonQueryFunction<false, false> | null = null;
 
+/**
+ * Normalise a connection string. Neon's dashboard offers a "psql" snippet like
+ *   psql 'postgresql://user:pass@host/db?...'
+ * which is easy to paste into an env var by mistake. Strip the `psql ` prefix
+ * and any surrounding quotes/whitespace so either form works.
+ */
+function cleanConnectionString(raw: string): string {
+  let s = raw.trim();
+  if (s.toLowerCase().startsWith("psql ")) s = s.slice(5).trim();
+  if ((s.startsWith("'") && s.endsWith("'")) || (s.startsWith('"') && s.endsWith('"'))) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
 function getClient(): NeonQueryFunction<false, false> {
   if (!client) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
+    const raw = process.env.DATABASE_URL;
+    if (!raw) {
       throw new Error("DATABASE_URL is not set — set it in your Netlify env vars.");
     }
-    client = neon(connectionString);
+    client = neon(cleanConnectionString(raw));
   }
   return client;
 }
