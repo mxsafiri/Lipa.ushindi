@@ -68,8 +68,46 @@ export default function Landing() {
         </header>
 
         {/* hero */}
-        <section className="grid items-center gap-10 pb-16 pt-6 lg:grid-cols-2 lg:gap-10 lg:pb-24 lg:pt-12">
-          <div>
+        <section className="relative grid items-center gap-10 pb-16 pt-6 lg:grid-cols-2 lg:gap-10 lg:pb-24 lg:pt-12">
+          {/* celebratory confetti, concentrated on the right around the mockup */}
+          <svg
+            viewBox="0 0 1920 1080"
+            preserveAspectRatio="xMidYMid slice"
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-0 h-full w-full opacity-90"
+          >
+            {/* flowing ribbon streamers */}
+            <g fill="none" strokeWidth={8} strokeLinecap="round" opacity={0.5}>
+              <path d="M1280 -40 C 1230 160, 1360 280, 1280 470" stroke="#7BD897" strokeWidth={6} />
+              <path d="M1560 -40 C 1640 200, 1480 360, 1600 580 S 1700 840, 1580 1120" stroke="#52B16A" />
+              <path d="M1860 40 C 1780 240, 1900 400, 1820 620 S 1740 880, 1850 1060" stroke="#EFA03C" />
+            </g>
+            {/* little squiggles */}
+            <g opacity={0.6} strokeWidth={5} strokeLinecap="round" fill="none">
+              <path d="M1330 120 q 20 -24 40 0 t 40 0" stroke="#fff" />
+              <path d="M1700 220 q 20 26 40 0 t 40 0" stroke="#3FA9D6" />
+              <path d="M1500 880 q 20 -24 40 0 t 40 0" stroke="#fff" />
+            </g>
+            {/* squares, dots & triangles */}
+            <g opacity={0.75}>
+              <rect x="1300" y="80" width="20" height="20" rx="3" fill="#3FA9D6" transform="rotate(18 1310 90)" />
+              <rect x="1740" y="120" width="20" height="20" rx="3" fill="#E04646" transform="rotate(-12 1750 130)" />
+              <rect x="1620" y="60" width="18" height="18" rx="3" fill="#EFA03C" />
+              <rect x="1840" y="300" width="20" height="20" rx="3" fill="#7BD897" transform="rotate(22 1850 310)" />
+              <rect x="1280" y="360" width="18" height="18" rx="3" fill="#cfd8d2" transform="rotate(14 1289 369)" />
+              <rect x="1700" y="900" width="20" height="20" rx="3" fill="#52B16A" transform="rotate(-16 1710 910)" />
+              <circle cx="1380" cy="60" r="9" fill="#52B16A" />
+              <circle cx="1800" cy="180" r="8" fill="#EFA03C" />
+              <circle cx="1300" cy="240" r="8" fill="#E04646" />
+              <circle cx="1870" cy="500" r="9" fill="#3FA9D6" />
+              <circle cx="1560" cy="940" r="8" fill="#EFA03C" />
+              <path d="M1450 90 l22 13 l-22 13 z" fill="#EFA03C" />
+              <path d="M1830 760 l-18 -13 l0 26 z" fill="#E04646" />
+              <path d="M1340 820 l22 13 l-22 13 z" fill="#3FA9D6" />
+            </g>
+          </svg>
+
+          <div className="relative z-10">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-[14px] py-[7px] text-[12.5px] font-semibold text-white/85 ring-1 ring-white/15">
               <span className="h-[7px] w-[7px] rounded-full bg-leaf" />
               Receipt Rally · Tanzania
@@ -117,7 +155,7 @@ export default function Landing() {
           </div>
 
           {/* phone preview (desktop only) */}
-          <div className="hidden justify-center lg:flex">
+          <div className="relative z-10 hidden justify-center lg:flex">
             <PhonePreview />
           </div>
         </section>
